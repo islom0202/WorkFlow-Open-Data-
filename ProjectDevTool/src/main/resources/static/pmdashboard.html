@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #e9eff1;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            min-height: 100vh;
+            color: #333;
+        }
+
+        h1 {
+            margin-top: 40px;
+            font-size: 2rem;
+            color: #444;
+            text-align: center;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+            width: 80%;
+            max-width: 1000px;
+            margin-top: 20px;
+        }
+
+        .block {
+            background: #ffffff;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .block:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .block h2 {
+            margin-bottom: 1rem;
+            font-size: 1.5rem;
+            color: #2c3e50;
+            font-weight: 600;
+        }
+
+        .block button {
+            padding: 0.75rem 1.5rem;
+            background: #3498db;
+            color: #ffffff;
+            border: none;
+            border-radius: 4px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            width: 100%;
+        }
+
+        .block button:hover {
+            background: #2980b9;
+        }
+
+        .block button:active {
+            background: #1d6f94;
+        }
+
+        .block button:focus {
+            outline: none;
+            box-shadow: 0 0 5px rgba(52, 152, 219, 0.6);
+        }
+
+        @media (max-width: 768px) {
+            .dashboard {
+                grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+                gap: 10px;
+            }
+
+            h1 {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+<h1>Welcome to Your Dashboard</h1>
+<div class="dashboard">
+    <div class="block">
+        <h2><i class="fas fa-list-alt"></i> Project List</h2>
+        <button onclick="handleAction('projectList')">View Projects</button>
+    </div>
+    <div class="block">
+        <h2><i class="fas fa-user-plus"></i> Invite Employee</h2>
+        <button onclick="handleAction('inviteEmployee')">Invite</button>
+    </div>
+    <div class="block">
+        <h2><i class="fas fa-tasks"></i> Tasks</h2>
+        <button onclick="handleAction('tasks')">View Tasks</button>
+    </div>
+    <div class="block">
+        <h2><i class="fas fa-chart-line"></i> Reports</h2>
+        <button onclick="handleAction('reports')">View Reports</button>
+    </div>
+    <div class="block">
+        <h2><i class="fas fa-video"></i> Meets</h2>
+        <button onclick="handleAction('meets')">Join Meet</button>
+    </div>
+    <div class="block">
+        <h2><i class="fas fa-user"></i> Profile</h2>
+        <button onclick="handleAction('profile')">View Profile</button>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/jwt-decode@3.1.2/build/jwt-decode.min.js"></script>
+<script src="https://kit.fontawesome.com/a076d05399.js"></script>
+<script>
+    // Check if a valid JWT token exists in localStorage
+    const token = localStorage.getItem('jwtToken');
+
+    if (!token) {
+        // No token found, redirect to signin page
+        window.location.href = 'signin.html';
+    } else {
+        try {
+            // Decode the token to check its validity
+            const decodedToken = jwt_decode(token);
+            const expirationTime = decodedToken.exp * 1000; // JWT expiration is in seconds, convert to milliseconds
+
+            if (Date.now() > expirationTime) {
+                // Token is expired, redirect to signin page
+                localStorage.removeItem('jwtToken'); // Optional: Clear the invalid token
+                window.location.href = 'signin.html';
+            }
+        } catch (error) {
+            // If decoding fails, redirect to signin page
+            localStorage.removeItem('jwtToken'); // Optional: Clear the invalid token
+            window.location.href = 'signin.html';
+        }
+    }
+</script>
+
+<script>
+    function handleAction(action) {
+        if (action === 'projectList') {
+            // Redirect to project.html page
+            window.location.href = 'project.html';
+        } else {
+            alert(`${action} button clicked!`);
+        }
+    }
+</script>
+</body>
+</html>

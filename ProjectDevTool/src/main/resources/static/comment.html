@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Comments</title>
+    <script src="/webjars/sockjs-client/1.0.2/sockjs.min.js"></script>
+    <script src="/webjars/stomp-websocket/2.3.3/stomp.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            padding: 0;
+        }
+        .comment-box {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        .comment {
+            margin-bottom: 15px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #fff;
+        }
+        .comment .sender-id {
+            font-weight: bold;
+            color: #333;
+        }
+        .comment .task-id {
+            color: #666;
+            font-size: 0.9em;
+        }.comment .sent-at {
+             color: #666;
+             font-size: 0.9em;
+         }
+    </style>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            // Connect to WebSocket server
+            const socket = new SockJS('/websocket-connection'); // Adjust the endpoint if necessary
+            const stompClient = Stomp.over(socket);
+
+            // Reference to the comment box
+            const commentBox = document.getElementById("comments");
+
+            // Connect to the WebSocket
+            stompClient.connect({}, function () {
+                console.log("Connected to WebSocket!");
+
+                // Subscribe to the /topic/message topic
+                stompClient.subscribe("/topic/message", function (payload) {
+                    const message = JSON.parse(payload.body);
+                    console.log("Received message:", message);
+
+                    // Add the message to the comment box
+                    const commentDiv = document.createElement("div");
+                    commentDiv.classList.add("comment");
+
+                    commentDiv.innerHTML = `
+                        <p class="sender-id">Sender: ${message.sender}</p>
+                        <p class="task-id">Task: ${message.task}</p>
+                        <p>${message.comment}</p>
+                        <p class="sent-at">Time: ${message.sentAt}</p>
+                    `;
+
+                    // Append to the comment box
+                    commentBox.appendChild(commentDiv);
+                });
+            });
+        });
+    </script>
+</head>
+<body>
+<h1>Real-Time Comments</h1>
+<div id="comments" class="comment-box">
+    <!-- Comments will appear here -->
+</div>
+</body>
+</html>

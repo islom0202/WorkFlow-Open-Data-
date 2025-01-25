@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Signup</title>
+    <!--    <link rel="stylesheet" href="styles.css">-->
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .container {
+            background: #ffffff;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            max-width: 400px;
+            width: 100%;
+        }
+
+        h1 {
+            margin-bottom: 1.5rem;
+            font-size: 1.5rem;
+            text-align: center;
+            color: #333;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #555;
+        }
+
+        input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+
+        input:focus {
+            border-color: #007bff;
+            outline: none;
+        }
+
+        button {
+            width: 100%;
+            padding: 0.75rem;
+            background: #007bff;
+            color: #ffffff;
+            border: none;
+            border-radius: 4px;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>Signup</h1>
+    <form id="signup-form">
+        <div class="form-group">
+            <label for="email">Email:</label>
+            <input type="email" id="email" name="email" required>
+        </div>
+        <div class="form-group">
+            <label for="login">Login:</label>
+            <input type="text" id="login" name="login" required>
+        </div>
+        <div class="form-group">
+            <label for="password">Password:</label>
+            <input type="password" id="password" name="password" required>
+        </div>
+        <button type="submit">Signup</button>
+    </form>
+    <p id="signup-message"></p>
+</div>
+
+<script>
+    document.getElementById('signup-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const email = document.getElementById('email').value;
+        const login = document.getElementById('login').value;
+        const password = document.getElementById('password').value;
+
+        const response = await fetch('/api/auth/signup', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({email, login, password})
+        });
+
+        const message = document.getElementById('signup-message');
+        if (response.ok) {
+            message.textContent = 'Signup successful!';
+            message.style.color = 'green';
+            window.location.href = 'signin.html'; // Redirect to the dashboard
+        } else {
+            const error = await response.json();
+            message.textContent = error.message || 'Signup failed!';
+            message.style.color = 'red';
+        }
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Signin</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .container {
+            background: #ffffff;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            max-width: 400px;
+            width: 100%;
+        }
+
+        h1 {
+            margin-bottom: 1.5rem;
+            font-size: 1.5rem;
+            text-align: center;
+            color: #333;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #555;
+        }
+
+        input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+
+        input:focus {
+            border-color: #007bff;
+            outline: none;
+        }
+
+        button {
+            width: 100%;
+            padding: 0.75rem;
+            background: #007bff;
+            color: #ffffff;
+            border: none;
+            border-radius: 4px;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>Signin</h1>
+    <form id="signin-form">
+        <div class="form-group">
+            <label for="login">Login:</label>
+            <input type="text" id="login" name="login" required>
+        </div>
+        <div class="form-group">
+            <label for="password">Password:</label>
+            <input type="password" id="password" name="password" required>
+        </div>
+        <button type="submit">Signin</button>
+    </form>
+    <p id="signin-message"></p>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/jwt-decode@3.1.2/build/jwt-decode.min.js"></script>
+<script>
+    document.getElementById('signin-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const login = document.getElementById('login').value;
+        const password = document.getElementById('password').value;
+
+        const response = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ login, password })
+        });
+
+        const message = document.getElementById('signin-message');
+        if (response.ok) {
+            const { accessToken } = await response.json();  // Get only the accessToken
+            message.textContent = 'Signin successful!';
+            message.style.color = 'green';
+            localStorage.setItem('jwtToken', accessToken); // Store JWT for future use
+
+            // Decode the token and extract the role
+            const decodedToken = jwt_decode(accessToken);
+            const role = decodedToken.role;  // Assuming the role is stored as a claim named "role"
+
+            // Check for valid roles and redirect
+            if (role === 'ROLE_PM' || role === 'ROLE_DIRECTOR') {
+                window.location.href = 'pmdashboard.html'; // Redirect to the dashboard for authorized roles
+            } else {
+                message.textContent = 'Access denied: You do not have the required role.';
+                message.style.color = 'red';
+            }
+
+        } else {
+            const error = await response.json();
+            message.textContent = error.message || 'Signin failed!';
+            message.style.color = 'red';
+        }
+    });
+</script>
+</body>
+</html>

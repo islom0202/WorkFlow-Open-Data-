@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Tracker</title>
+    <script src="/webjars/sockjs-client/1.0.2/sockjs.min.js"></script>
+    <script src="/webjars/stomp-websocket/2.3.3/stomp.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f9fafb;
+            margin: 0;
+            padding: 0;
+        }
+
+        .task-board {
+            display: flex;
+            justify-content: space-between;
+            gap: 15px;
+            padding: 20px;
+            margin-top: 30px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .column {
+            width: 220px;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 15px;
+            overflow-y: auto;
+            max-height: 80vh;
+            transition: transform 0.3s ease;
+        }
+
+        .column:hover {
+            transform: scale(1.02);
+        }
+
+        .column-header {
+            font-size: 20px;
+            font-weight: bold;
+            text-align: center;
+            padding: 12px;
+            margin-bottom: 15px;
+            background-color: #4e73df;
+            color: white;
+            border-radius: 6px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+        }
+
+        .task {
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            background-color: #f1f1f1;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            cursor: pointer;
+            transition: transform 0.3s ease, background-color 0.3s ease;
+        }
+
+        .task:hover {
+            background-color: #e2e6ea;
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .task p {
+            margin: 5px 0;
+            font-size: 14px;
+        }
+
+        button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 5px;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 5px;
+            transition: all 0.3s ease;
+        }
+
+        .check-button {
+            background-color: #ffc107;
+        }
+
+        .check-button:hover {
+            background-color: #e0a800;
+        }
+
+        .backlog-button {
+            background-color: #dc3545;
+        }
+
+        .backlog-button:hover {
+            background-color: #c82333;
+        }
+
+        #ratingPopup {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #fff;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            width: 320px;
+            text-align: center;
+            z-index: 1000;
+            transition: all 0.3s ease;
+        }
+
+        #ratingPopup h3 {
+            margin-bottom: 10px;
+            font-size: 22px;
+            color: #333;
+        }
+
+        #ratingPopup button {
+            margin-top: 15px;
+            padding: 10px 20px;
+            background-color: #4e73df;
+            color: white;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        #ratingPopup button:hover {
+            background-color: #3e5ccf;
+        }
+
+        .stars {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin: 10px 0;
+        }
+
+        .star {
+            font-size: 30px;
+            color: #ddd;
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+
+        .star:hover,
+        .star.selected {
+            color: #ffc107;
+        }
+
+        @media screen and (max-width: 768px) {
+            .task-board {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .column {
+                width: 90%;
+                margin-bottom: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="task-board">
+    <div class="column" id="pending">
+        <div class="column-header">Pending</div>
+    </div>
+    <div class="column" id="in-progress">
+        <div class="column-header">In Progress</div>
+    </div>
+    <div class="column" id="completed">
+        <div class="column-header">Completed</div>
+    </div>
+    <div class="column" id="cancelled">
+        <div class="column-header">Cancelled</div>
+    </div>
+    <div class="column" id="backlog">
+        <div class="column-header">Backlog</div>
+    </div>
+</div>
+
+<div id="ratingPopup">
+    <h3>Rate Task</h3>
+    <p>How would you rate this task?</p>
+    <div class="stars" id="stars"></div>
+    <button onclick="submitRating()">Submit</button>
+    <button onclick="closePopup()">Close</button>
+</div>
+
+<script>
+    let currentTaskId = null;
+    let projectOwnerId = null;
+    let selectedRating = 0; // Initialize to avoid reference error
+
+    // Initialize WebSocket connection
+    const socket = new SockJS(`${window.location.origin}/websocket-connection`);
+    const stompClient = Stomp.over(socket);
+
+    stompClient.connect({}, () => {
+        console.log("Connected to WebSocket");
+        stompClient.subscribe('/task/message', (message) => {
+            const task = JSON.parse(message.body);
+            updateTask(task);
+        });
+    }, (error) => {
+        console.error("WebSocket connection failed:", error);
+    });
+
+    // Fetch tasks on page load
+    window.onload = function () {
+        fetch(`${window.location.origin}/api/task/listBy-proId/1/2`)
+            .then(response => response.json())
+            .then(tasks => tasks.forEach(task => updateTask(task)))
+            .catch(error => console.error("Error fetching tasks:", error));
+    };
+
+    // Update task element on the board
+    function updateTask(task) {
+        const existingTaskElement = document.querySelector(`.task[data-id="${task.id}"]`);
+        if (existingTaskElement) existingTaskElement.remove();
+
+        const taskElement = document.createElement('div');
+        taskElement.className = 'task';
+        taskElement.dataset.id = task.id;
+        taskElement.innerHTML = `
+            <p><strong>Task:</strong> ${task.name}</p>
+            <p><strong>Assigned to:</strong> ${task.assignedTo || 'Unassigned'}</p>
+            <p><strong>Priority:</strong> ${task.prior}</p>
+            <p><strong>Rating:</strong> ${task.rating ? '⭐'.repeat(task.rating) : 'Not Rated'}</p>
+        `;
+
+        if (task.status.toLowerCase() === 'completed') {
+            const buttonsContainer = document.createElement('div');
+            buttonsContainer.style.display = 'flex';
+            buttonsContainer.style.justifyContent = 'space-evenly';
+            buttonsContainer.style.marginTop = '10px';
+
+            const checkButton = document.createElement('button');
+            checkButton.textContent = 'Check';
+            checkButton.className = 'check-button';
+            checkButton.onclick = () => {
+                if (task.projectOwnerId) {
+                    showRatingPopup(task.id, task.projectOwnerId);
+                } else {
+                    console.error('Project Owner ID is missing for task:', task);
+                }
+            };
+
+            const backlogButton = document.createElement('button');
+            backlogButton.textContent = 'Backlog';
+            backlogButton.className = 'backlog-button';
+            backlogButton.onclick = () => moveToBacklog(task.id);
+
+            buttonsContainer.appendChild(checkButton);
+            buttonsContainer.appendChild(backlogButton);
+            taskElement.appendChild(buttonsContainer);
+        }
+
+        const column = document.getElementById(task.status.toLowerCase().replace('_', '-'));
+        if (column) {
+            column.appendChild(taskElement);
+        } else {
+            console.warn(`No column found for status: ${task.status}`);
+        }
+    }
+
+    // Show rating popup
+    function showRatingPopup(taskId, ownerId) {
+        currentTaskId = taskId;
+        projectOwnerId = ownerId;
+        document.getElementById('ratingPopup').style.display = 'block';
+        displayStars(); // Show empty stars for rating
+    }
+
+    // Display stars
+    function displayStars() {
+        const starsContainer = document.getElementById('stars');
+        starsContainer.innerHTML = ''; // Clear existing stars
+        for (let i = 1; i <= 5; i++) {
+            const star = document.createElement('span');
+            star.classList.add('star');
+            star.innerHTML = '&#9733;';
+            star.onclick = () => selectRating(i);
+            starsContainer.appendChild(star);
+        }
+    }
+
+    // Select rating
+    function selectRating(rating) {
+        selectedRating = rating;
+        const stars = document.querySelectorAll('.star');
+        stars.forEach((star, index) => {
+            if (index < rating) {
+                star.classList.add('selected');
+            } else {
+                star.classList.remove('selected');
+            }
+        });
+    }
+
+    // Submit task rating
+    function submitRating() {
+        if (selectedRating < 1 || selectedRating > 5) {
+            alert('Please select a rating between 1 and 5.');
+            return;
+        }
+
+        fetch(`${window.location.origin}/api/task/rate/${projectOwnerId}`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+            },
+            body: JSON.stringify({ currentTaskId: currentTaskId, rate: selectedRating }),
+        })
+            .then(response => response.json())
+            .then(() => {
+                alert('Rating submitted successfully.');
+                closePopup();
+            })
+            .catch(error => console.error('Error submitting rating:', error));
+    }
+
+    // Close rating popup
+    function closePopup() {
+        document.getElementById('ratingPopup').style.display = 'none';
+        currentTaskId = null;
+        selectedRating = 0;
+    }
+
+    // Move task to backlog
+    function moveToBacklog(taskId) {
+        fetch(`${window.location.origin}/api/task/moveToBacklog/${taskId}`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+            },
+        })
+            .then(response => response.json())
+            .then(() => alert('Task moved to backlog.'))
+            .catch(error => console.error('Error moving task to backlog:', error));
+    }
+</script>
+
+</body>
+</html>

@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Projects</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f7f7f7;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            min-height: 100vh;
+            color: #333;
+        }
+
+        h1 {
+            margin-top: 40px;
+            font-size: 2rem;
+            color: #444;
+            text-align: center;
+        }
+
+        .project-list {
+            width: 80%;
+            max-width: 1000px;
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .project-list h2 {
+            font-size: 1.75rem;
+            color: #2c3e50;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        .project-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            margin-bottom: 15px;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .create-button {
+            padding: 0.75rem 1.5rem;
+            background: #3498db;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            font-size: 1rem;
+            cursor: pointer;
+            width: 100%;
+            text-align: center;
+        }
+
+        .create-button:hover {
+            background: #2980b9;
+        }
+
+        .create-button:active {
+            background: #1d6f94;
+        }
+
+        .create-button:focus {
+            outline: none;
+            box-shadow: 0 0 5px rgba(52, 152, 219, 0.6);
+        }
+
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.4);
+            padding-top: 60px;
+            overflow: auto;
+        }
+
+        .modal-content {
+            background-color: #fff;
+            margin: 5% auto;
+            padding: 20px;
+            border-radius: 8px;
+            width: 80%;
+            max-width: 500px;
+        }
+
+        .modal-header {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .modal-footer {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .modal-footer button {
+            background-color: #3498db;
+            color: #fff;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .modal-footer button:hover {
+            background-color: #2980b9;
+        }
+
+        .modal-footer button:focus {
+            outline: none;
+            box-shadow: 0 0 5px rgba(52, 152, 219, 0.6);
+        }
+    </style>
+</head>
+<body>
+
+<h1>Your Projects</h1>
+
+<!-- Container for displaying project list -->
+<div class="project-list">
+    <h2>Projects Assigned to You</h2>
+
+    <!-- Project items will be dynamically added here -->
+    <div id="projectListContainer"></div>
+
+    <!-- Button to create new project if the user is PM or Director -->
+    <button id="createProjectButton" class="create-button" style="display: none;">Create New Project</button>
+</div>
+
+<!-- Modal for project creation -->
+<div id="createProjectModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">Create New Project</div>
+        <form id="projectForm">
+            <div>
+                <label for="name">Project Name</label>
+                <input type="text" id="name" name="name" required>
+            </div>
+            <div>
+                <label for="description">Description</label>
+                <textarea id="description" name="description" required></textarea>
+            </div>
+            <div>
+                <label for="budget">Budget</label>
+                <input type="number" id="budget" name="budget" required>
+            </div>
+            <div>
+                <label for="startDate">Start Date</label>
+                <input type="date" id="startDate" name="startDate" required>
+            </div>
+            <div>
+                <label for="endDate">End Date</label>
+                <input type="date" id="endDate" name="endDate" required>
+            </div>
+            <div class="modal-footer">
+                <button type="submit">Save</button>
+                <button type="button" onclick="closeModal()">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/jwt-decode@3.1.2/build/jwt-decode.min.js"></script>
+<script>
+    // Declare decodedToken globally
+    let decodedToken = null;
+
+    // Function to simulate fetching project list from an API
+    function getProjectsForUser(id) {
+        return fetch(`http://localhost:9090/api/findBy/empId/${id}`)
+            .then(response => response.json())
+            .then(data => {
+                // Handle the project data here
+                displayProjects(data);
+            });
+    }
+
+    // Function to display the list of projects
+    // function displayProjects(projects) {
+    //     const container = document.getElementById('projectListContainer');
+    //     container.innerHTML = ''; // Clear any existing projects
+    //
+    //     projects.forEach(project => {
+    //         const projectElement = document.createElement('div');
+    //         projectElement.className = 'project-item';
+    //         projectElement.innerHTML = `
+    //             <h3>${project.name}</h3>
+    //             <span>Project ID: ${project.id}</span>
+    //         `;
+    //         container.appendChild(projectElement);
+    //     });
+    // }
+
+    function displayProjects(projects) {
+        const container = document.getElementById('projectListContainer');
+        container.innerHTML = ''; // Clear any existing projects
+
+        if (!Array.isArray(projects)) {
+            console.error('Expected an array but got:', projects);
+            return; // Exit the function if it's not an array
+        }
+
+        projects.forEach(project => {
+            const projectElement = document.createElement('div');
+            projectElement.className = 'project-item';
+            projectElement.innerHTML = `
+            <h3>${project.name}</h3>
+            <span>Project ID: ${project.id}</span>
+        `;
+            container.appendChild(projectElement);
+        });
+    }
+
+    // Function to check if the user is PM or Director
+    function checkUserRole() {
+        const token = localStorage.getItem('jwtToken');
+        if (!token) {
+            // No token found, redirect to signin page
+            window.location.href = 'signin.html';
+        } else {
+            try {
+                decodedToken = jwt_decode(token); // Assign to global variable
+                const expirationTime = decodedToken.exp * 1000;
+                const role = decodedToken.role;
+                const userId = decodedToken.userId || decodedToken.id || decodedToken.user_id; // Ensure 'userId' exists in the decoded token
+
+                if (Date.now() > expirationTime) {
+                    localStorage.removeItem('jwtToken');
+                    window.location.href = 'signin.html';
+                } else {
+                    // Fetch and display the projects
+                    if (userId) {
+                        getProjectsForUser(userId);
+                    } else {
+                        console.error('User ID is missing in the token.');
+                    }
+
+                    // Show the create project button if the user is PM or Director
+                    if (role === 'ROLE_PM' || role === 'ROLE_Director') {
+                        document.getElementById('createProjectButton').style.display = 'block';
+                    }
+                }
+            } catch (error) {
+                console.error("Error decoding token:", error);
+                localStorage.removeItem('jwtToken');
+                window.location.href = 'signin.html';
+            }
+        }
+    }
+
+    // Open the modal for creating a new project
+    function openModal() {
+        document.getElementById('createProjectModal').style.display = 'block';
+    }
+
+    // Close the modal
+    function closeModal() {
+        document.getElementById('createProjectModal').style.display = 'none';
+    }
+
+    // Handle the form submission
+    document.getElementById('createProjectButton').addEventListener('click', openModal);
+    document.getElementById('projectForm').addEventListener('submit', function(event) {
+        event.preventDefault();
+
+        if (!decodedToken) {
+            alert('User token is invalid. Please sign in again.');
+            return;
+        }
+
+        const projectData = {
+            ownerId: decodedToken.userId || decodedToken.id || decodedToken.user_id, // Use global decodedToken
+            name: document.getElementById('name').value,
+            description: document.getElementById('description').value,
+            budget: parseFloat(document.getElementById('budget').value),
+            startDate: document.getElementById('startDate').value,
+            endDate: document.getElementById('endDate').value,
+        };
+
+        // Send project data to the backend to create the new project
+        fetch('http://localhost:9090/api/pro/create', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(projectData),
+        })
+            .then(response => response.json())
+            .then(data => {
+                alert('Project created successfully');
+                closeModal(); // Close the modal
+                getProjectsForUser(decodedToken.userId); // Refresh the project list
+            })
+            .catch(error => {
+                alert('Error creating project: ' + error);
+            });
+    });
+
+    // Check user role and load content when the page is ready
+    checkUserRole();
+</script>
+</body>
+</html>
